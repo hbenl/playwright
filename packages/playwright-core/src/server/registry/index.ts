@@ -504,7 +504,7 @@ function readDescriptors(browsersJSON: BrowsersJSON): BrowsersJSONDescriptor[] {
 
 export type BrowserName = 'chromium' | 'firefox' | 'webkit' | '_bidiFirefox' | '_bidiChromium';
 type InternalTool = 'ffmpeg' | 'winldd' | 'firefox-beta' | 'chromium-tip-of-tree' | 'chromium-headless-shell' | 'chromium-tip-of-tree-headless-shell' | 'android';
-type BidiChannel = 'moz-firefox' | 'moz-firefox-beta' | 'moz-firefox-nightly' | 'bidi-chrome-canary' | 'bidi-chrome-stable' | 'bidi-chromium';
+type BidiChannel = 'moz-firefox-stable' | 'moz-firefox-beta' | 'moz-firefox-nightly' | 'bidi-chrome-canary' | 'bidi-chrome-stable' | 'bidi-chromium';
 type ChromiumChannel = 'chrome' | 'chrome-beta' | 'chrome-dev' | 'chrome-canary' | 'msedge' | 'msedge-beta' | 'msedge-dev' | 'msedge-canary';
 const allDownloadable = ['android', 'chromium', 'firefox', 'webkit', 'ffmpeg', 'firefox-beta', 'chromium-tip-of-tree', 'chromium-headless-shell', 'chromium-tip-of-tree-headless-shell'];
 
@@ -711,7 +711,7 @@ export class Registry {
       'win32': `\\Microsoft\\Edge SxS\\Application\\msedge.exe`,
     }));
 
-    this._executables.push(this._createBidiFirefoxChannel('moz-firefox', {
+    this._executables.push(this._createBidiFirefoxChannel('moz-firefox-stable', {
       'linux': '/snap/bin/firefox',
       'darwin': '/Applications/Firefox.app/Contents/MacOS/firefox',
       'win32': '\\Mozilla Firefox\\firefox.exe',

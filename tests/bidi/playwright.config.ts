@@ -81,7 +81,7 @@ const getExecutablePath = (browserName: BrowserName) => {
 
 const browserToChannels = {
   '_bidiChromium': ['bidi-chromium', 'bidi-chrome-canary', 'bidi-chrome-stable'],
-  '_bidiFirefox': ['moz-firefox', 'moz-firefox-beta', 'moz-firefox-nightly'],
+  '_bidiFirefox': ['moz-firefox-stable', 'moz-firefox-beta', 'moz-firefox-nightly'],
 };
 
 for (const [key, channels] of Object.entries(browserToChannels)) {
