@@ -7,16 +7,16 @@ on:
         description: Playwright SHA / ref to test. Use 'refs/pull/PULL_REQUEST_ID/head' to test a PR. Defaults to the current branch.
         required: false
         default: ''
-  pull_request:
-    branches:
-      - main
-    paths:
-      - .github/workflows/tests_bidi.yml
-      - packages/playwright-core/src/server/bidi/**
-      - tests/bidi/**
-  schedule:
-    # Run every day at midnight
-    - cron: '0 0 * * *'
+  # pull_request:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - .github/workflows/tests_bidi.yml
+  #     - packages/playwright-core/src/server/bidi/**
+  #     - tests/bidi/**
+  # schedule:
+  #   # Run every day at midnight
+  #   - cron: '0 0 * * *'
 
 env:
   FORCE_COLOR: 1
@@ -72,19 +72,19 @@ jobs:
         path: test-results/report.json
         retention-days: 7
 
-    - name: Azure Login
-      if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
-      uses: azure/login@v2
-      with:
-        client-id: ${{ secrets.AZURE_BLOB_REPORTS_CLIENT_ID }}
-        tenant-id: ${{ secrets.AZURE_BLOB_REPORTS_TENANT_ID }}
-        subscription-id: ${{ secrets.AZURE_BLOB_REPORTS_SUBSCRIPTION_ID }}
+    # - name: Azure Login
+    #   if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+    #   uses: azure/login@v2
+    #   with:
+    #     client-id: ${{ secrets.AZURE_BLOB_REPORTS_CLIENT_ID }}
+    #     tenant-id: ${{ secrets.AZURE_BLOB_REPORTS_TENANT_ID }}
+    #     subscription-id: ${{ secrets.AZURE_BLOB_REPORTS_SUBSCRIPTION_ID }}
 
-    - name: Upload report.csv to Azure
-      if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
-      run: |
-        REPORT_DIR='bidi-reports'
-        azcopy cp "./test-results/report.csv" "https://mspwblobreport.blob.core.windows.net/\$web/$REPORT_DIR/${{ matrix.channel }}.csv"
-        echo "Report url: https://mspwblobreport.z1.web.core.windows.net/$REPORT_DIR/${{ matrix.channel }}.csv"
-      env:
-        AZCOPY_AUTO_LOGIN_TYPE: AZCLI
+    # - name: Upload report.csv to Azure
+    #   if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
+    #   run: |
+    #     REPORT_DIR='bidi-reports'
+    #     azcopy cp "./test-results/report.csv" "https://mspwblobreport.blob.core.windows.net/\$web/$REPORT_DIR/${{ matrix.channel }}.csv"
+    #     echo "Report url: https://mspwblobreport.z1.web.core.windows.net/$REPORT_DIR/${{ matrix.channel }}.csv"
+    #   env:
+    #     AZCOPY_AUTO_LOGIN_TYPE: AZCLI
