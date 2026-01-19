@@ -20,6 +20,8 @@ import { CDPSessionDispatcher } from './cdpSessionDispatcher';
 import { Dispatcher } from './dispatcher';
 import { BrowserContext } from '../browserContext';
 import { ArtifactDispatcher } from './artifactDispatcher';
+import { BidiBrowser } from '../bidi/bidiBrowser';
+import { RawBidiSession } from '../bidi/bidiConnection';
 
 import type { BrowserTypeDispatcher } from './browserTypeDispatcher';
 import type { PageDispatcher } from './pageDispatcher';
@@ -112,6 +114,8 @@ export class BrowserDispatcher extends Dispatcher<Browser, channels.BrowserChann
 
   async newBrowserCDPSession(params: channels.BrowserNewBrowserCDPSessionParams, progress: Progress): Promise<channels.BrowserNewBrowserCDPSessionResult> {
     // Note: progress is ignored because this operation is not cancellable and should not block in the browser anyway.
+    if (this._object instanceof BidiBrowser)
+      return { session: new CDPSessionDispatcher(this, new RawBidiSession(this._object._browserSession) as any) };
     if (!this._object.options.isChromium)
       throw new Error(`CDP session is only available in Chromium`);
     const crBrowser = this._object as CRBrowser;

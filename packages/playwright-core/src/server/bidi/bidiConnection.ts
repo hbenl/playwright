@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { EventEmitter } from 'events';
+import { SdkObject } from '../instrumentation';
 
 import { debugLogger } from '../utils/debugLogger';
 import { helper } from '../helper';
@@ -31,7 +31,7 @@ import type * as bidi from './third_party/bidiProtocol';
 export const kBrowserCloseMessageId = Number.MAX_SAFE_INTEGER - 1;
 export const kShutdownSessionNewMessageId = kBrowserCloseMessageId - 1;
 
-export class BidiConnection {
+export class BidiConnection extends SdkObject {
   private readonly _transport: ConnectionTransport;
   private readonly _onDisconnect: () => void;
   private readonly _protocolLogger: ProtocolLogger;
@@ -45,7 +45,8 @@ export class BidiConnection {
   // TODO: shared/service workers might have multiple owner realms.
   readonly _realmToOwnerRealm = new Map<string, string>();
 
-  constructor(transport: ConnectionTransport, onDisconnect: () => void, protocolLogger: ProtocolLogger, browserLogsCollector: RecentLogsCollector) {
+  constructor(parent: SdkObject, transport: ConnectionTransport, onDisconnect: () => void, protocolLogger: ProtocolLogger, browserLogsCollector: RecentLogsCollector) {
+    super(parent, 'bidi-connection');
     this._transport = transport;
     this._onDisconnect = onDisconnect;
     this._protocolLogger = protocolLogger;
@@ -150,7 +151,7 @@ type BidiEvents = {
   [K in bidi.Event['method']]: Extract<bidi.Event, {method: K}>;
 };
 
-export class BidiSession extends EventEmitter {
+export class BidiSession extends SdkObject {
   readonly connection: BidiConnection;
   readonly sessionId: string;
 
@@ -167,17 +168,17 @@ export class BidiSession extends EventEmitter {
   override once: <T extends keyof BidiEvents | symbol>(event: T, listener: (payload: T extends symbol ? any : BidiEvents[T extends keyof BidiEvents ? T : never]['params']) => void) => this;
 
   constructor(connection: BidiConnection, sessionId: string, rawSend: (message: any) => void) {
-    super();
+    super(connection, 'bidi-session');
     this.setMaxListeners(0);
     this.connection = connection;
     this.sessionId = sessionId;
     this._rawSend = rawSend;
 
-    this.on = super.on;
-    this.off = super.removeListener;
-    this.addListener = super.addListener;
-    this.removeListener = super.removeListener;
-    this.once = super.once;
+    this.on = super.on as any;
+    this.off = super.removeListener as any;
+    this.addListener = super.addListener as any;
+    this.removeListener = super.removeListener as any;
+    this.once = super.once as any;
   }
 
   addFrameBrowsingContext(context: string) {
@@ -256,5 +257,18 @@ export class BidiSession extends EventEmitter {
     } else {
       Promise.resolve().then(() => this.emit(object.method, object.params));
     }
+  }
+}
+
+export class RawBidiSession extends SdkObject {
+  private _session: BidiSession;
+
+  constructor(session: BidiSession) {
+    super(session, 'raw-bidi-session');
+    this._session = session;
+  }
+
+  async send(method: string, params?: any) {
+    return await this._session.send(method as any, params);
   }
 }

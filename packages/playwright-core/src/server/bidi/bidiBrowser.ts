@@ -92,7 +92,7 @@ export class BidiBrowser extends Browser {
 
   constructor(parent: SdkObject, transport: ConnectionTransport, options: BrowserOptions) {
     super(parent, options);
-    this._connection = new BidiConnection(transport, this._onDisconnect.bind(this), options.protocolLogger, options.browserLogsCollector);
+    this._connection = new BidiConnection(parent, transport, this._onDisconnect.bind(this), options.protocolLogger, options.browserLogsCollector);
     this._browserSession = this._connection.browserSession;
     this._eventListeners = [
       eventsHelper.addEventListener(this._browserSession, 'browsingContext.contextCreated', this._onBrowsingContextCreated.bind(this)),

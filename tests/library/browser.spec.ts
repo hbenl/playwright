@@ -21,6 +21,45 @@ test('should return browserType', function({ browser, browserType }) {
   expect(browser.browserType()).toBe(browserType);
 });
 
+test('should expose raw bidi session', async function({ browser, isBidi }) {
+  test.skip(!isBidi);
+  const session = await browser.newBrowserCDPSession();
+  const uuidRegEx = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+  const { contexts } = await session.send('browsingContext.getTree' as any, {});
+  expect(contexts[0]).toEqual({
+    userContext: 'default',
+    clientWindow: expect.stringMatching(uuidRegEx),
+    context: expect.stringMatching(uuidRegEx),
+    url: 'about:blank',
+    ['moz:name']: '',
+    ['moz:scope']: 'content',
+    originalOpener: null,
+    parent: null,
+    children: [],
+  });
+  const { contexts: chromeContexts } = await session.send('browsingContext.getTree' as any, { 'moz:scope': 'chrome' });
+  expect(chromeContexts[0]).toEqual({
+    userContext: 'default',
+    clientWindow: expect.stringMatching(uuidRegEx),
+    context: expect.stringMatching(uuidRegEx),
+    url: 'chrome://browser/content/browser.xhtml',
+    ['moz:name']: '',
+    ['moz:scope']: 'chrome',
+    originalOpener: null,
+    parent: null,
+    children: [{
+      userContext: 'default',
+      clientWindow: expect.stringMatching(uuidRegEx),
+      context: expect.stringMatching(uuidRegEx),
+      url: 'about:blank',
+      ['moz:name']: 'sidebar',
+      ['moz:scope']: 'chrome',
+      originalOpener: null,
+      children: []
+    }],
+  });
+});
+
 test('should create new page @smoke', async function({ browser }) {
   const page1 = await browser.newPage();
   expect(browser.contexts().length).toBe(1);
