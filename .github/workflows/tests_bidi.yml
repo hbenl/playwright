@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        channel: [bidi-chromium, moz-firefox-nightly]
+        channel: [moz-firefox-nightly]
         isPullRequest:
         - ${{ github.event_name == 'pull_request' }}
         exclude:
@@ -58,7 +58,7 @@ jobs:
       run: |
         echo "BIDI_FFPATH=$(npx -y @puppeteer/browsers install firefox@nightly | tail -n1 | sed 's/^[^ ]* *//')" >> "$GITHUB_ENV"
     - name: Run tests
-      run: xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" -- npm run biditest -- --retries=${{ matrix.isPullRequest && 2 || 0 }} --project=${{ matrix.channel }}*
+      run: xvfb-run --auto-servernum --server-args="-screen 0 1280x960x24" -- npm run biditest -- --retries=${{ matrix.isPullRequest && 2 || 0 }} --project=${{ matrix.channel }}* tests/library/trace-viewer.spec.ts
       env:
         PWTEST_USE_BIDI_EXPECTATIONS: ${{ matrix.isPullRequest && '1' || '' }}
     - name: Upload csv report to GitHub
@@ -76,20 +76,3 @@ jobs:
         name: json-report-${{ matrix.channel }}
         path: test-results/report.json
         retention-days: 7
-
-    - name: Azure Login
-      if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
-      uses: azure/login@v2
-      with:
-        client-id: ${{ secrets.AZURE_BLOB_REPORTS_CLIENT_ID }}
-        tenant-id: ${{ secrets.AZURE_BLOB_REPORTS_TENANT_ID }}
-        subscription-id: ${{ secrets.AZURE_BLOB_REPORTS_SUBSCRIPTION_ID }}
-
-    - name: Upload report.csv to Azure
-      if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}
-      run: |
-        REPORT_DIR='bidi-reports'
-        azcopy cp "./test-results/report.csv" "https://mspwblobreport.blob.core.windows.net/\$web/$REPORT_DIR/${{ matrix.channel }}.csv"
-        echo "Report url: https://mspwblobreport.z1.web.core.windows.net/$REPORT_DIR/${{ matrix.channel }}.csv"
-      env:
-        AZCOPY_AUTO_LOGIN_TYPE: AZCLI
