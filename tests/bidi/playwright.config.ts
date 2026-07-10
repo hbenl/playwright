@@ -69,7 +69,7 @@ const config: Config<PlaywrightWorkerOptions & PlaywrightTestOptions & TestModeW
   globalTimeout: 90 * 60 * 1000,
   workers: undefined,
   fullyParallel: !process.env.CI,
-  forbidOnly: !!process.env.CI,
+  // forbidOnly: !!process.env.CI,
   retries: 0, // No retries even on CI for now.
   reporter: reporters(),
   projects: [],

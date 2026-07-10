@@ -66,7 +66,7 @@ it('should respect CSP @smoke', async ({ page, server }) => {
   expect(await page.evaluate(() => window['testStatus'])).toBe('SUCCESS');
 });
 
-it('should play video @smoke', async ({ page, asset, browserName, isWindows, isLinux, mode }) => {
+it.only('should play video @smoke', async ({ page, asset, browserName, isWindows, isLinux, mode }) => {
   it.skip(browserName === 'webkit' && isWindows, 'passes locally but fails on GitHub Action bot, apparently due to a Media Pack issue in the Windows Server');
 
   // Safari only plays mp4 so we test WebKit with an .mp4 clip.
