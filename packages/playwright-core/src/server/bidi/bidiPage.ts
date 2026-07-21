@@ -41,6 +41,15 @@ import type * as channels from '../channels';
 const UTILITY_WORLD_NAME = '__playwright_utility_world__';
 export const kPlaywrightBindingChannel = 'playwrightChannel';
 
+declare global {
+  interface Element {
+    getBoxQuads?(options?: { box?: 'margin' | 'border' | 'padding' | 'content', relativeTo?: Node }): DOMQuad[];
+  }
+  interface Document {
+    convertQuadFromNode?(quad: DOMQuadInit, from: Node, options?: { fromBox?: 'margin' | 'border' | 'padding' | 'content', toBox?: 'margin' | 'border' | 'padding' | 'content' }): DOMQuad;
+  }
+}
+
 export class BidiPage implements PageDelegate {
   readonly rawMouse: RawMouseImpl;
   readonly rawKeyboard: RawKeyboardImpl;
@@ -539,37 +548,22 @@ export class BidiPage implements PageDelegate {
   }
 
   async getBoundingBox(handle: dom.ElementHandle): Promise<types.Rect | null> {
-    const box = await handle.evaluate(element => {
-      if (!(element instanceof Element) || element.getClientRects().length === 0)
-        return null;
-      const rect = element.getBoundingClientRect();
-      return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
-    });
-    if (!box)
+    const quads = await this.getContentQuads(handle as dom.ElementHandle<Element>);
+    if (!quads || quads === 'error:notconnected' || !quads.length)
       return null;
-    const position = await this._framePosition(handle._frame);
-    if (!position)
-      return null;
-    box.x += position.x;
-    box.y += position.y;
-    return box;
-  }
-
-  // TODO: move to Frame.
-  private async _framePosition(frame: frames.Frame): Promise<types.Point | null> {
-    if (frame === this._page.mainFrame())
-      return { x: 0, y: 0 };
-    const element = await frame.frameElement(nullProgress);
-    const box = await element.boundingBox(nullProgress);
-    if (!box)
-      return null;
-    const style = await element.evaluateInUtility(([injected, iframe]) => injected.describeIFrameStyle(iframe as Element), {}).catch(e => 'error:notconnected' as const);
-    if (style === 'error:notconnected' || style === 'transformed')
-      return null;
-    // Content box is offset by border and padding widths.
-    box.x += style.left;
-    box.y += style.top;
-    return box;
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+    for (const quad of quads) {
+      for (const point of quad) {
+        minX = Math.min(minX, point.x);
+        maxX = Math.max(maxX, point.x);
+        minY = Math.min(minY, point.y);
+        maxY = Math.max(maxY, point.y);
+      }
+    }
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
   }
 
   async scrollRectIntoViewIfNeeded(handle: dom.ElementHandle<Element>, rect?: types.Rect): Promise<'error:notvisible' | 'error:notconnected' | 'done'> {
@@ -643,9 +637,17 @@ export class BidiPage implements PageDelegate {
   }
 
   async getContentQuads(handle: dom.ElementHandle<Element>): Promise<types.Quad[] | null | 'error:notconnected'> {
-    const quads = await handle.evaluateInUtility(([injected, node]) => {
+    let quads: types.Quad[] | null | 'error:notconnected' = await handle.evaluateInUtility(([injected, node]) => {
       if (!node.isConnected)
         return 'error:notconnected';
+      if (node.getBoxQuads) {
+        return node.getBoxQuads().map(quad => [
+          { x: quad.p1.x, y: quad.p1.y },
+          { x: quad.p2.x, y: quad.p2.y },
+          { x: quad.p3.x, y: quad.p3.y },
+          { x: quad.p4.x, y: quad.p4.y },
+        ]);
+      }
       const rects = node.getClientRects();
       if (!rects)
         return null;
@@ -658,15 +660,37 @@ export class BidiPage implements PageDelegate {
     }, null);
     if (!quads || quads === 'error:notconnected')
       return quads;
-    // TODO: consider transforming quads to support clicks in iframes.
-    const position = await this._framePosition(handle._frame);
-    if (!position)
-      return null;
-    quads.forEach(quad => quad.forEach(point => {
-      point.x += position.x;
-      point.y += position.y;
-    }));
-    return quads as types.Quad[];
+
+    let frame: frames.Frame | null = handle._frame;
+    while (frame && frame !== this._page.mainFrame()) {
+      const frameElement = await frame.frameElement(nullProgress);
+      quads = await frameElement.evaluateInUtility(([injected, element, quads]) => {
+        if (element.ownerDocument?.convertQuadFromNode) {
+          return quads.map(quad => {
+            const domQuad = new DOMQuad(quad[0], quad[1], quad[2], quad[3]);
+            const converted = element.ownerDocument!.convertQuadFromNode!(domQuad, element, { fromBox: 'content' });
+            return [
+              { x: converted.p1.x, y: converted.p1.y },
+              { x: converted.p2.x, y: converted.p2.y },
+              { x: converted.p3.x, y: converted.p3.y },
+              { x: converted.p4.x, y: converted.p4.y },
+            ] as types.Quad;
+          });
+        }
+        const style = injected.describeIFrameStyle(element as Element);
+        if (style === 'error:notconnected' || style === 'transformed')
+          return quads;
+        const rect = (element as Element).getBoundingClientRect();
+        const dx = rect.left + style.left;
+        const dy = rect.top + style.top;
+        return quads.map(quad => quad.map(point => ({ x: point.x + dx, y: point.y + dy })) as types.Quad);
+      }, quads);
+      if (quads === 'error:notconnected')
+        return quads;
+      frame = frame.parentFrame();
+    }
+
+    return quads;
   }
 
   async setInputFilePaths(progress: Progress, handle: dom.ElementHandle<HTMLInputElement>, paths: string[]): Promise<void> {
